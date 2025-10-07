@@ -1,6 +1,8 @@
 package main
 
 import (
+	"MongoService/controllers"
+	"MongoService/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,11 +16,19 @@ func main() {
 		})
 	})
 
-	user := r.Group("/user")
+	models.ConnectMongo()
+
+	userGroup := r.Group("/users")
 	{
-		user.POST("/create")
+		userGroup.POST("/create", controllers.InsertUser)
+		userGroup.POST("/create_all", controllers.InsertUsers)
+		userGroup.PUT("/update/:id", controllers.UpdateUser)
+		userGroup.DELETE("/delete/:id", controllers.DeleteUser)
+		userGroup.GET("/:id", controllers.FindUserById)
+		userGroup.GET("/all", controllers.ListAllUsers)
+		userGroup.DELETE("/delete/all", controllers.DeleteAll)
 	}
 
-	r.Run()
+	r.Run(":8081")
 
 }
