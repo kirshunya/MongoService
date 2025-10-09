@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"log"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 )
 
 type User struct {
-	ID       primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	ID       primitive.ObjectID `json:"id,omitempty" bson:"_id"`
 	Username string             `json:"username" bson:"username"`
 	Email    string             `json:"email" bson:"email"`
 	Password string             `json:"password" bson:"password"`
@@ -23,6 +24,7 @@ func InsertUser(user User) error {
 	defer cancel()
 
 	collection := mongoClient.Database(db).Collection(dbColumn)
+	user.ID = primitive.NewObjectID()
 	res, err := collection.InsertOne(ctx, user)
 	if err != nil {
 		log.Printf("Error inserting user: %v", err)
@@ -38,8 +40,9 @@ func InsertUsers(users []User) error {
 
 	collection := mongoClient.Database(db).Collection(dbColumn)
 	newUsers := make([]interface{}, len(users))
-	for i, user := range users {
-		newUsers[i] = user
+	for i, _ := range users {
+		users[i].ID = primitive.NewObjectID()
+		newUsers[i] = users[i]
 	}
 	res, err := collection.InsertMany(ctx, newUsers)
 	if err != nil {
@@ -122,25 +125,21 @@ func ListAll() ([]User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var results []User
+	var users []User
 	collection := mongoClient.Database(db).Collection(dbColumn)
-	cur, err := collection.Find(ctx, bson.M{})
+	cur, err := collection.Find(ctx, bson.M{}, options.Find())
 	if err != nil {
 		log.Printf("Error occurred during Find(): %v", err)
 		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	if err := cur.All(ctx, &results); err != nil {
+	if err := cur.All(ctx, &users); err != nil {
 		log.Printf("Error occurred during cursor.All(): %v", err)
 		return nil, err
 	}
 
-	if len(results) == 0 {
-		log.Println("No users found")
-	}
-
-	return results, nil
+	return users, nil
 }
 
 func DeleteAll() error {
@@ -155,4 +154,25 @@ func DeleteAll() error {
 	}
 	fmt.Printf("Deleted %v documents in the users collection\n", result.DeletedCount)
 	return nil
+}
+
+func ListAllUsers() ([]User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var users []User
+	collection := mongoClient.Database(db).Collection(dbColumn)
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Printf("Error occurred during Find(): %v", err)
+		return nil, fmt.Errorf("failed to find users: %w", err)
+	}
+	defer cur.Close(ctx)
+
+	if err := cur.All(ctx, &users); err != nil {
+		log.Printf("Error occurred during cursor.All(): %v", err)
+		return nil, fmt.Errorf("failed to decode users: %w", err)
+	}
+
+	return users, nil
 }

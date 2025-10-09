@@ -74,7 +74,7 @@ func DeleteAll(c *gin.Context) {
 }
 
 func ListAllUsers(c *gin.Context) {
-	users, err := models.ListAll()
+	users, err := models.ListAllUsers()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
