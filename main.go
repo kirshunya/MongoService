@@ -2,12 +2,16 @@ package main
 
 import (
 	"MongoService/controllers"
+	"MongoService/middleware"
 	"MongoService/models"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
 	r := gin.Default()
+
+	r.Use(middleware.PrometheusMiddleware())
 
 	r.Use(gin.Logger())
 	r.GET("/ping", func(c *gin.Context) {
@@ -27,6 +31,11 @@ func main() {
 		userGroup.GET("/:id", controllers.FindUserById)
 		userGroup.GET("/all", controllers.ListAllUsers)
 		userGroup.DELETE("/delete/all", controllers.DeleteAll)
+	}
+
+	metricsGroup := r.Group("/metrics")
+	{
+		metricsGroup.GET("/", gin.WrapH(promhttp.Handler()))
 	}
 
 	r.Run(":8081")
