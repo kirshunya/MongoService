@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+      - elasticsearch
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    ports:
+      - "5601:5601"
+    volumes:
+      - D:/GolandProjects/MongoService/kibana.yaml:/usr/share/kibana/config/kibana.yaml
+    depends_on:
+      - elasticsearch
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - /d/GolandProjects/MongoService/prometheus.yaml:/etc/prometheus/config/prometheus.yaml
+    depends_on:
+      - app
+    command:
+      - '--config.file=/etc/prometheus/config/prometheus.yaml'
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.15.0
+    user: root
+    volumes:
+      - /d/GolandProjects/MongoService/metricbeat.yaml:/usr/share/metricbeat/metricbeat.yaml
+    depends_on:
+      - elasticsearch
+      - prometheus
+    command: metricbeat -e -strict.perms=false
+
+volumes:
+  mongodata:
+    driver: local
+  esdata:
+    driver: local
+  kibanadata:
+    driver: local
